@@ -1,0 +1,69 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "default",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE":                 "Release",
+                "ENABLE_LTO":                       false,
+
+                "ENABLE_FMRADIO":                   true,
+                "ENABLE_UART":                      true,
+                "ENABLE_USB":                       true,
+                "ENABLE_FLASHLIGHT":                true,
+                "ENABLE_SCRAMBLER":                 true,
+                "ENABLE_SPECTRUM":                  true,
+                "ENABLE_AM_FIX":                    true,
+
+                "ENABLE_350EN":                     true,
+
+                "ENABLE_BIG_FREQ":                  true,
+                "ENABLE_SMALL_BOLD":                true,
+                "ENABLE_CUSTOM_MENU_LAYOUT":        true,
+                "ENABLE_KEEP_MEM_NAME":             true,
+                "ENABLE_WIDE_RX":                   true,
+                "ENABLE_F_CAL_MENU":                true,
+                "ENABLE_NO_CODE_SCAN_TIMEOUT":      true,
+                "ENABLE_SQUELCH_MORE_SENSITIVE":    true,
+                "ENABLE_FASTER_CHANNEL_SCAN":       true,
+                "ENABLE_RSSI_BAR":                  true,
+                "ENABLE_AUDIO_BAR":                 true,
+                "ENABLE_COPY_CHAN_TO_VFO":          true,
+                "ENABLE_SCAN_RANGES":               true,
+                "ENABLE_NAVIG_LEFT_RIGHT":          true,
+                "ENABLE_SPECTRUM_LINES":            true,
+                "ENABLE_SCANLIST_SHOW_DETAIL":      false,
+
+                "ENABLE_FEAT_F4HWN":                true,
+                "ENABLE_FEAT_F4HWN_AUDIO_SCOPE":    true,
+                "ENABLE_FEAT_F4HWN_SPECTRUM":       true,
+                "ENABLE_FEAT_F4HWN_RX_TX_TIMER":    true,
+                "ENABLE_FEAT_F4HWN_RESUME_STATE":   true,
+                "ENABLE_FEAT_F4HWN_NARROWER":       true,
+                "ENABLE_FEAT_F4HWN_INV":            true,
+                "ENABLE_FEAT_F4HWN_RESET_CHANNEL":  true,
+
+                "VERSION_STRING_1":   "",
+                "VERSION_STRING_2":   "",
+                "EDITION_STRING":     ""
+            }
+        },
+        {
+            "name": "KA52",
+            "inherits": "default",
+            "cacheVariables": {
+                "TARGET": "ka52.ouro"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "KA52",
+            "configurePreset": "KA52"
+        }
+    ]
+}
