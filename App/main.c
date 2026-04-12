@@ -133,46 +133,21 @@ void Main(void)
 
     BOOT_Mode_t  BootMode = BOOT_GetMode();
 
+    // Erase режимы — обрабатываем немедленно, до любой инициализации настроек
+    if (BootMode == BOOT_MODE_ERASE_NO_CALIB || BootMode == BOOT_MODE_ERASE_WITH_CALIB)
+    {
+        BOOT_ProcessMode(BootMode);
+        // Если вернулись (отмена) — продолжаем нормальную загрузку
+        BootMode = BOOT_MODE_NORMAL;
+    }
+
 #ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
     if (BootMode == BOOT_MODE_RESCUE_OPS)
     {
         gEeprom.MENU_LOCK = !gEeprom.MENU_LOCK;
         SETTINGS_SaveSettings();
     }
-
-    /*
-    if(gEeprom.MENU_LOCK == true) // Force Main Only
-    {
-        gEeprom.DUAL_WATCH = 0;
-        gEeprom.CROSS_BAND_RX_TX = 0;
-        //gFlagReconfigureVfos = true;
-        //gUpdateStatus        = true;
-    }
-    */
 #endif
-
-#ifdef ENABLE_FEAT_F4HWN_RESCUE_OPS
-    if (BootMode == BOOT_MODE_F_LOCK && gEeprom.MENU_LOCK == true)
-    {
-        BootMode = BOOT_MODE_NORMAL;
-    }
-#endif
-
-    if (BootMode == BOOT_MODE_F_LOCK)
-    {
-
-        gF_LOCK = true;            // flag to say include the hidden menu items
-        #ifdef ENABLE_FEAT_F4HWN
-            gEeprom.KEY_LOCK = 0;
-            SETTINGS_SaveSettings();
-            gMenuCursor = MENU_ITEMS; 
-            
-            #ifdef ENABLE_NOAA
-                gMenuCursor += 1; // move to hidden section, fix me if change... !!!
-            #endif
-            gSubMenuSelection = gSetting_F_LOCK;
-        #endif
-    }
 
     // count the number of menu items
     gMenuListCount = 0;

@@ -53,7 +53,6 @@ center_line_t center_line = CENTER_LINE_NONE;
     static int8_t RxLine = -1;
     static uint32_t RxOnVfofrequency;
 
-    bool isMainOnlyInputDTMF = false;
 
     static bool isMainOnly()
     {
@@ -159,103 +158,33 @@ static void DrawLevelBar(uint8_t xpos, uint8_t line, uint8_t level, uint8_t bars
 
 #ifdef ENABLE_AUDIO_BAR
 
-/**
- * @brief Approximate logarithmic scale using integer arithmetic
- * @param value Input value to convert
- * @return log2 approximation
- * 
- * Used for converting linear audio amplitude to logarithmic display
- * Avoids floating point and expensive operations
- */
-uint8_t log2_approx(unsigned int value) {
-    uint8_t log = 0;
-    while (value >>= 1) {
-        log++;
-    }
-    return log;
-}
-
-/**
- * @brief Display microphone audio level bar during transmission
- * 
- * Shows real-time microphone input level as a visual bar graph.
- * Only active when:
- * - Microphone bar setting enabled
- * - Currently transmitting
- * - Main display is active
- * - No DTMF call in progress
- * 
- * Uses logarithmic scaling for natural audio level perception
- */
 void UI_DisplayAudioBar(void)
 {
-    if (gSetting_mic_bar)
-    {
-        if(gLowBattery && !gLowBatteryConfirmed)
-            return;
-
-#ifdef ENABLE_FEAT_F4HWN
-        RxBlinkLed = 0;
-        RxBlinkLedCounter = 0;
-        BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-        unsigned int line;
-        if (isMainOnly())
-        {
-            line = 5;
-        }
-        else
-        {
-            line = 3;
-        }
-#else
-        const unsigned int line = 3;
-#endif
-
-        if (gCurrentFunction != FUNCTION_TRANSMIT ||
-            gScreenToDisplay != DISPLAY_MAIN
+    if (!gSetting_mic_bar)
+        return;
+    if (gLowBattery && !gLowBatteryConfirmed)
+        return;
+    if (gCurrentFunction != FUNCTION_TRANSMIT || gScreenToDisplay != DISPLAY_MAIN
 #ifdef ENABLE_DTMF_CALLING
-            || gDTMF_CallState != DTMF_CALL_STATE_NONE
+        || gDTMF_CallState != DTMF_CALL_STATE_NONE
 #endif
-            )
-        {
-            return;  // screen is in use
-        }
-
+        )
+        return;
 #if defined(ENABLE_ALARM) || defined(ENABLE_TX1750)
-        if (gAlarmState != ALARM_STATE_OFF)
-            return;
+    if (gAlarmState != ALARM_STATE_OFF)
+        return;
 #endif
-        static uint8_t barsOld = 0;
-        const uint8_t thresold = 18; // arbitrary thresold
-        //const uint8_t barsList[] = {0, 0, 0, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 25};
-        const uint8_t barsList[] = {0, 0, 0, 1, 2, 3, 5, 7, 9, 12, 15, 18, 21, 25, 25, 25};
-        uint8_t logLevel;
-        uint8_t bars;
-
-        unsigned int voiceLevel  = BK4819_GetVoiceAmplitudeOut();  // 15:0
-
-        voiceLevel = (voiceLevel >= thresold) ? (voiceLevel - thresold) : 0;
-        logLevel = log2_approx(MIN(voiceLevel * 16, 32768u) + 1);
-        bars = barsList[logLevel];
-        barsOld = (barsOld - bars > 1) ? (barsOld - 1) : bars;
-
-        uint8_t *p_line = gFrameBuffer[line];
-        memset(p_line, 0, LCD_WIDTH);
 
 #ifdef ENABLE_FEAT_F4HWN
-        if (!gSetting_set_met) {
-            // MODERN: living equalizer (AudioScope)
-            UI_DisplayAudioScope();
-            return;
-        }
+    RxBlinkLed = 0;
+    RxBlinkLedCounter = 0;
+    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
 #endif
-        DrawLevelBar(2, line, barsOld, 25);
 
-        if (gCurrentFunction == FUNCTION_TRANSMIT)
-            ST7565_BlitFullScreen();
-    }
+    UI_DisplayAudioScope();
 }
 #endif
+
 
 // ============================================================================
 // AUDIO SCOPE (living equalizer during TX)
@@ -867,66 +796,6 @@ void UI_DisplayMain(void)
 #endif
 
 
-            if (gDTMF_InputMode
-#ifdef ENABLE_DTMF_CALLING
-                || gDTMF_CallState != DTMF_CALL_STATE_NONE || gDTMF_IsTx
-#endif
-            ) {
-                char *pPrintStr = "";
-                // show DTMF stuff
-#ifdef ENABLE_DTMF_CALLING
-                char Contact[16];
-                if (!gDTMF_InputMode) {
-                    if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT) {
-                        pPrintStr = DTMF_FindContact(gDTMF_String, Contact) ? Contact : gDTMF_String;
-                    } else if (gDTMF_CallState == DTMF_CALL_STATE_RECEIVED || gDTMF_CallState == DTMF_CALL_STATE_RECEIVED_STAY){
-                        pPrintStr = DTMF_FindContact(gDTMF_Callee, Contact) ? Contact : gDTMF_Callee;
-                    }else if (gDTMF_IsTx) {
-                        pPrintStr = gDTMF_String;
-                    }
-                }
-
-                UI_PrintString(pPrintStr, 2, 0, 2 + (vfo_num * 3), 8);
-
-                pPrintStr = "";
-                if (!gDTMF_InputMode) {
-                    if (gDTMF_CallState == DTMF_CALL_STATE_CALL_OUT) {
-                        pPrintStr = (gDTMF_State == DTMF_STATE_CALL_OUT_RSP) ? "CALL OUT(RSP)" : "CALL OUT";
-                    } else if (gDTMF_CallState == DTMF_CALL_STATE_RECEIVED || gDTMF_CallState == DTMF_CALL_STATE_RECEIVED_STAY) {
-                        sprintf(String, "CALL FRM:%s", (DTMF_FindContact(gDTMF_Caller, Contact)) ? Contact : gDTMF_Caller);
-                        pPrintStr = String;
-                    } else if (gDTMF_IsTx) {
-                        pPrintStr = (gDTMF_State == DTMF_STATE_TX_SUCC) ? "DTMF TX(SUCC)" : "DTMF TX";
-                    }
-                }
-                else
-#endif
-                {
-                    sprintf(String, ">%s", gDTMF_InputBox);
-                    pPrintStr = String;
-                }
-
-#ifdef ENABLE_FEAT_F4HWN
-                if (isMainOnly())
-                {
-                    UI_PrintString(pPrintStr, 2, 0, 5, 8);
-                    isMainOnlyInputDTMF = true;
-                    center_line = CENTER_LINE_IN_USE;
-                }
-                else
-                {
-                    UI_PrintString(pPrintStr, 2, 0, 0 + (vfo_num * 3), 8);
-                    isMainOnlyInputDTMF = false;
-                    center_line = CENTER_LINE_IN_USE;
-                    continue;
-                }
-#else
-                UI_PrintString(pPrintStr, 2, 0, 0 + (vfo_num * 3), 8);
-                center_line = CENTER_LINE_IN_USE;
-                continue;
-#endif
-            }
-
             // highlight the selected/used VFO with a marker
             if (isMainVFO)
                 memcpy(p_line0 + 0, BITMAP_VFO_Default, sizeof(BITMAP_VFO_Default));
@@ -1338,7 +1207,7 @@ if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfo_num]))
             UI_PrintStringSmallNormal(s, LCD_WIDTH + 28, 0, line + 1);
             UI_PrintStringSmallBold(t, LCD_WIDTH + 100, 0, line + 1); 
 
-            if (isMainOnly() && !gDTMF_InputMode)
+            if (isMainOnly() )
             {
                 if(shift == 0)
                 {
@@ -1572,52 +1441,6 @@ if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfo_num]))
 #endif
         if (rx || gCurrentFunction == FUNCTION_FOREGROUND || gCurrentFunction == FUNCTION_POWER_SAVE)
         {
-            #if 1
-                if (gSetting_live_DTMF_decoder && gDTMF_RX_live[0] != 0)
-                {   // show live DTMF decode
-                    const unsigned int len = strlen(gDTMF_RX_live);
-                    const unsigned int idx = (len > (17 - 5)) ? len - (17 - 5) : 0;  // limit to last 'n' chars
-
-                    if (gScreenToDisplay != DISPLAY_MAIN
-#ifdef ENABLE_DTMF_CALLING
-                        || gDTMF_CallState != DTMF_CALL_STATE_NONE
-#endif
-                        )
-                        return;
-
-                    center_line = CENTER_LINE_DTMF_DEC;
-
-                    sprintf(String, "DTMF %s", gDTMF_RX_live + idx);
-#ifdef ENABLE_FEAT_F4HWN
-                    if (isMainOnly())
-                    {
-                        UI_PrintStringSmallNormal(String, 2, 0, 5);
-                    }
-                    else
-                    {
-                        UI_PrintStringSmallNormal(String, 2, 0, 3);
-                    }
-#else
-                    UI_PrintStringSmallNormal(String, 2, 0, 3);
-
-#endif
-                }
-            #else
-                if (gSetting_live_DTMF_decoder && gDTMF_RX_index > 0)
-                {   // show live DTMF decode
-                    const unsigned int len = gDTMF_RX_index;
-                    const unsigned int idx = (len > (17 - 5)) ? len - (17 - 5) : 0;  // limit to last 'n' chars
-
-                    if (gScreenToDisplay != DISPLAY_MAIN ||
-                        gDTMF_CallState != DTMF_CALL_STATE_NONE)
-                        return;
-
-                    center_line = CENTER_LINE_DTMF_DEC;
-
-                    sprintf(String, "DTMF %s", gDTMF_RX_live + idx);
-                    UI_PrintStringSmallNormal(String, 2, 0, 3);
-                }
-            #endif
 
 #ifdef ENABLE_SHOW_CHARGE_LEVEL
             else if (gChargingWithTypeC)
@@ -1652,7 +1475,7 @@ if (IS_MR_CHANNEL(gEeprom.ScreenChannel[vfo_num]))
     }
 
     // 2. Отрисовка метки VFO A/B в режиме Main Only (уже была в вашем коде)
-    if (isMainOnly() && !gDTMF_InputMode)
+    if (isMainOnly() )
     {
         sprintf(String, "VFO %s", activeTxVFO ? "B" : "A");
         UI_PrintStringSmallBold(String, 92, 0, 6);

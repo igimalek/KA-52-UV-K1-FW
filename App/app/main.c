@@ -234,7 +234,7 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
 
         case KEY_9:
 #ifdef ENABLE_SPECTRUM
-            APP_RunSpectrum();
+            APP_RunSpectrumMode(2); // F+9 = Range режим
             gRequestDisplayScreen = DISPLAY_MAIN;
 #endif
             break;
@@ -427,6 +427,11 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                         gRequestDisplayScreen = DISPLAY_MAIN;
                     }
                     gWasFKeyPressed = false;
+                    return;
+                }
+
+                // Долгое 8: ничего (спектр бендов только по F+8)
+                if (Key == KEY_8) {
                     return;
                 }
 
